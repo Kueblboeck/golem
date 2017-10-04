@@ -6,6 +6,7 @@ from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import P2P_PROTOCOL_ID
+from golem.core.keysauth import EllipticalKeysAuth
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class PeerSession(BasicSafeSession):
     DCRDuplicatePeers = "Duplicate peers"
     DCRTooManyPeers = "Too many peers"
     DCRRefresh = "Refresh"
+    DCRKeyDifficulty = "Peer's key not difficult enough"
 
     def __init__(self, conn):
         """
@@ -364,6 +366,17 @@ class PeerSession(BasicSafeSession):
                 self.port
             )
             self.disconnect(PeerSession.DCRProtocolVersion)
+            return
+
+        if not self.p2p_service.keys_auth.is_pubkey_difficult(
+                self.node_info.key,
+                self.p2p_service.key_difficulty):
+            logger.info(
+                "Key is not difficult enough from %r:%r",
+                self.address,
+                self.port
+            )
+            self.disconnect(PeerSession.DCRKeyDifficulty)
             return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
